@@ -30,6 +30,8 @@ jobs:
           PR_JSON=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.issue.number }})
           echo "head_sha=$(echo $PR_JSON | jq -r .head.sha)" >> $GITHUB_OUTPUT
           echo "base_sha=$(echo $PR_JSON | jq -r .base.sha)" >> $GITHUB_OUTPUT
+          COMMENT_COUNT=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}/comments | jq length)
+          echo "comment_count=$COMMENT_COUNT" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -39,3 +41,12 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-2.5-flash
           EXCLUDE: "*.md,*.txt,package-lock.json,*.yml,*.yaml"
+
+      - name: Post LGTM comment if no issues found
+        run: |
+          NEW_COUNT=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}/comments | jq length)
+          if [ "$NEW_COUNT" -le "${{ steps.pr.outputs.comment_count }}" ]; then
+            gh pr comment ${{ github.event.issue.number }} --body "LGTM! 👍"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
